@@ -1,17 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* @import "shadcn/tailwind.css"; */
 
 @custom-variant dark (&:is(.dark *));
 
-/* =========================================================
-   CheckItRight — Global Design System
-   Tailwind CSS v4 + shadcn/ui
-   ========================================================= */
-
-/* ---------------------------------------------------------
-   Root Theme
-   --------------------------------------------------------- */
 
 :root {
   /* Base */
