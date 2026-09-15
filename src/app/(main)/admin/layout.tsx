@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth-guard";
-import LogoutButton from "@/components/global/logout-button";
+import LogoutButton from "@/components/global/Logout-button";
 import AdminSidebar from "./components/AdminSidebar";
 
 export default async function AdminLayout({

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { syncUserWithDatabase } from "@/actions/user/user.action";
+import { syncUserWithDatabase } from "@/actions/user/user.actions";
 import { ROLE_ROUTES } from "@/lib/types/role.type";
 
 const page = async () => {
