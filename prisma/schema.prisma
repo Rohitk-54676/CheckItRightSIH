@@ -19,6 +19,26 @@ enum UserStatus {
   INACTIVE
 }
 
+enum ScanStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ImageType {
+  FRONT
+  BACK
+  SIDE
+  ADDITIONAL
+}
+
+enum ReportStatus {
+  SUBMITTED
+  REJECTED
+  FORWARDED_TO_INSPECTOR
+  RESOLVED
+}
+
 model User {
   id String @id @default(cuid())
 
@@ -31,7 +51,13 @@ model User {
   role   UserRole   @default(CONSUMER)
   status UserStatus @default(ACTIVE)
 
+  roleChangesMade RoleChangeLog[] @relation("ChangedBy")
+  roleChanges     RoleChangeLog[] @relation("TargetUser")
 
+  scans            Scan[]
+  submittedReports CitizenReport[]
+  reviewedReports  CitizenReport[] @relation("ReportReviewer")
+  inspections      Inspection[]    @relation("InspectorCases") // ← NEW
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -41,3 +67,227 @@ model User {
   @@index([createdAt])
 }
 
+model RoleChangeLog {
+  id String @id @default(cuid())
+
+  userId      String
+  changedById String
+
+  oldRole UserRole
+  newRole UserRole
+
+  createdAt DateTime @default(now())
+
+  user      User @relation("TargetUser", fields: [userId], references: [id], onDelete: Cascade)
+  changedBy User @relation("ChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([changedById])
+  @@index([createdAt])
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  productName String?
+  brandName   String?
+  category    String?
+
+  commonGenericName String?
+
+  manufacturer String?
+  packer       String?
+  importer     String?
+
+  netQuantityValue Decimal?
+  netQuantityUnit  String?
+
+  mrp Decimal?
+
+  countryOfOrigin String?
+
+  manufacturingDate DateTime?
+  packingDate       DateTime?
+
+  bestBefore String?
+  useBy      String?
+
+  consumerCareDetails String?
+
+  extractedData Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scans   Scan[]
+  reports CitizenReport[]
+
+  @@index([productName])
+  @@index([brandName])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model Scan {
+  id String @id @default(cuid())
+
+  userId    String
+  productId String?
+
+  status ScanStatus @default(PROCESSING)
+
+  rawOcrText String? @db.Text
+
+  ocrConfidence Float?
+
+  ocrEngine  String?
+  ocrVersion String?
+
+  extractedData Json?
+
+  analysisResult Json?
+
+  errorMessage String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  images ScanImage[]
+
+  reports CitizenReport[]
+
+  @@index([userId])
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ScanImage {
+  id String @id @default(cuid())
+
+  scanId String
+
+  imageType ImageType @default(ADDITIONAL)
+
+  cloudinaryPublicId String
+  secureUrl          String
+
+  width  Int?
+  height Int?
+  format String?
+  bytes  Int?
+
+  qualityScore  Float?
+  qualityPassed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([imageType])
+  @@index([createdAt])
+}
+
+model CitizenReport {
+  id String @id @default(cuid())
+  reportCode String @unique
+  submittedById String
+  productId String?
+  scanId String?
+  status ReportStatus @default(SUBMITTED)
+  issueType String?
+  description String? @db.Text
+
+  locationText String?
+  shopName String?
+  shopAddress String?
+  city String?
+  state String?
+  pincode String?
+  latitude Float?
+  longitude Float?
+
+  reviewedById String?
+  reviewedAt DateTime?
+  resolutionRemarks String? @db.Text
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submittedBy User @relation(fields: [submittedById], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  scan Scan? @relation(fields: [scanId], references: [id], onDelete: SetNull)
+  reviewedBy User? @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  evidence ReportEvidence[]
+  inspection Inspection?
+
+  @@index([submittedById])
+  @@index([productId])
+  @@index([scanId])
+  @@index([status])
+  @@index([reviewedById])
+  @@index([createdAt])
+}
+
+model ReportEvidence {
+  id String @id @default(cuid())
+
+  reportId String
+
+  cloudinaryPublicId String
+  secureUrl          String
+
+  width  Int?
+  height Int?
+  format String?
+  bytes  Int?
+
+  createdAt DateTime @default(now())
+
+  report CitizenReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// INSPECTION — new table for inspector claim + field findings
+// ─────────────────────────────────────────────────────────────
+model Inspection {
+  id String @id @default(cuid())
+
+  reportId    String @unique
+  inspectorId String
+
+  claimedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  // Findings (Step 4)
+  violationFound Boolean?
+  violationType  String?
+  observation    String?  @db.Text
+
+  // Action (Step 5)
+  actionType       String?
+  actionDetails    String?   @db.Text
+  actionDate       DateTime?
+  followUpRequired Boolean?
+
+  // Final mandatory remark
+  remarks String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  report    CitizenReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  inspector User          @relation("InspectorCases", fields: [inspectorId], references: [id], onDelete: Restrict)
+
+  @@index([inspectorId])
+  @@index([claimedAt])
+  @@index([completedAt])
+}
