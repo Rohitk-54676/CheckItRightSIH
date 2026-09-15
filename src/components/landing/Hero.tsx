@@ -62,6 +62,7 @@ export default function Hero() {
       id="home"
       className="relative isolate overflow-hidden bg-[#F7FAFC]"
     >
+  
       {/* Background atmosphere */}
       <div
         aria-hidden="true"
