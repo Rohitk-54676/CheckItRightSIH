@@ -63,7 +63,6 @@ export default function Hero() {
       className="relative isolate overflow-hidden bg-[#F7FAFC]"
     >
   
-      {/* Background atmosphere */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
@@ -83,14 +82,12 @@ export default function Hero() {
       </div>
 
       <div className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-7xl grid-cols-1 items-center gap-12 px-5 py-12 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-16">
-        {/* ================= LEFT ================= */}
         <motion.div
           variants={container}
           initial="hidden"
           animate="show"
           className="max-w-2xl"
         >
-          {/* Eyebrow */}
           <motion.div variants={item}>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#1769AA]/15 bg-[#EAF4FF] px-3.5 py-1.5">
               <motion.span
@@ -112,7 +109,6 @@ export default function Hero() {
             </div>
           </motion.div>
 
-          {/* Heading */}
           <motion.h1
             variants={item}
             className="mt-6 text-4xl font-bold leading-[1.06] tracking-[-0.035em] text-[#0B1F33] sm:text-5xl lg:text-[4.25rem]"
@@ -136,7 +132,6 @@ export default function Hero() {
             </span>
           </motion.h1>
 
-          {/* Description */}
           <motion.p
             variants={item}
             className="mt-6 max-w-xl text-base leading-7 text-[#627D98] sm:text-lg"
@@ -145,7 +140,6 @@ export default function Hero() {
             against Legal Metrology requirements — powered by AI and OCR.
           </motion.p>
 
-          {/* Buttons */}
           <motion.div
             variants={item}
             className="mt-8 flex flex-col gap-3 sm:flex-row"
@@ -178,7 +172,6 @@ export default function Hero() {
             </motion.a>
           </motion.div>
 
-          {/* Trust strip */}
           <motion.div
             variants={item}
             className="mt-10 grid grid-cols-1 gap-4 border-t border-[#D9E2EC] pt-6 sm:grid-cols-3"
@@ -202,7 +195,6 @@ export default function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* ================= RIGHT ================= */}
         <motion.div
           initial={{ opacity: 0, scale: 0.94, x: 30 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -213,7 +205,6 @@ export default function Hero() {
           }}
           className="relative mx-auto w-full max-w-md"
         >
-          {/* Floating scan status */}
           <motion.div
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -239,7 +230,6 @@ export default function Hero() {
             </div>
           </motion.div>
 
-          {/* Flow */}
           <div className="mb-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-wide text-[#627D98] sm:text-xs">
             <span>Product</span>
             <ArrowRight className="h-3 w-3 text-[#1769AA]" />
@@ -252,9 +242,7 @@ export default function Hero() {
             <span className="text-[#0B1F33]">Result</span>
           </div>
 
-          {/* Main visual */}
           <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[2rem] border border-[#D9E2EC] bg-[#EAF4FF] shadow-2xl shadow-[#0B1F33]/10">
-            {/* Image */}
             <Image
               src="/images/hero-product.png"
               alt="Packaged product being scanned for compliance"
@@ -264,10 +252,8 @@ export default function Hero() {
               priority
             />
 
-            {/* Image overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F33]/25 via-transparent to-transparent" />
 
-            {/* Scanning beam */}
             <motion.div
               initial={{ top: "8%" }}
               animate={{ top: ["8%", "88%", "8%"] }}
@@ -279,13 +265,11 @@ export default function Hero() {
               className="absolute left-5 right-5 z-10 h-px bg-[#16A34A] shadow-[0_0_12px_rgba(22,163,74,0.7)]"
             />
 
-            {/* Scanner corners */}
             <div className="absolute left-5 top-5 h-8 w-8 border-l-2 border-t-2 border-white/80" />
             <div className="absolute right-5 top-5 h-8 w-8 border-r-2 border-t-2 border-white/80" />
             <div className="absolute bottom-5 left-5 h-8 w-8 border-b-2 border-l-2 border-white/80" />
             <div className="absolute bottom-5 right-5 h-8 w-8 border-b-2 border-r-2 border-white/80" />
 
-            {/* Scan indicator */}
             <motion.div
               animate={{
                 opacity: [0.5, 1, 0.5],
@@ -303,7 +287,6 @@ export default function Hero() {
               </span>
             </motion.div>
 
-            {/* Phone */}
             <motion.div
               animate={{
                 y: [0, -7, 0],
@@ -325,7 +308,6 @@ export default function Hero() {
               />
             </motion.div>
 
-            {/* Result card */}
             <motion.div
               initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
@@ -379,7 +361,6 @@ export default function Hero() {
             </motion.div>
           </div>
 
-          {/* Bottom floating badge */}
           <motion.div
             animate={{
               y: [0, -5, 0],
