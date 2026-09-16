@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import ScanItem from "./ScanItem";
 import type { DashboardScan } from "@/lib/consumer/get-user-dashboard";
+import Link from "next/link";
 
 const container = {
   hidden: {},
@@ -35,12 +36,12 @@ export default function RecentScans({ scans }: { scans: DashboardScan[] }) {
     >
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-bold text-[#102A43]">Recent Scans</h2>
-        <a
-          href="/user/scans"
+        <Link
+          href="/consumer/scans"
           className="text-xs font-semibold text-[#1769AA] hover:underline"
         >
           View all →
-        </a>
+        </Link>
       </div>
 
       {scans.length === 0 ? (

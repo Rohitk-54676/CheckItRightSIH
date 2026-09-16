@@ -24,6 +24,37 @@ type ProductFields = {
   [key: string]: unknown;
 };
 
+
+function serializeForClient<T>(value: T): T {
+  if (value instanceof Prisma.Decimal) {
+    return value.toString() as unknown as T;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString() as unknown as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      serializeForClient(item),
+    ) as unknown as T;
+  }
+
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      result[key] = serializeForClient(val);
+    }
+
+    return result as T;
+  }
+
+  return value;
+}
+
 function normalizeValue(
   value: string | null | undefined,
 ): string | null {
@@ -118,6 +149,7 @@ function parseProductDate(
   return parsedDate;
 }
 
+
 function serializeProduct(
   product: any,
 ) {
@@ -125,33 +157,7 @@ function serializeProduct(
     return null;
   }
 
-  return {
-    ...product,
-
-    netQuantityValue:
-      product.netQuantityValue !==
-      null
-        ? product.netQuantityValue.toString()
-        : null,
-
-    mrp:
-      product.mrp !== null
-        ? product.mrp.toString()
-        : null,
-
-    extractedData:
-      product.extractedData ?? null,
-
-    createdAt:
-      product.createdAt instanceof Date
-        ? product.createdAt.toISOString()
-        : product.createdAt,
-
-    updatedAt:
-      product.updatedAt instanceof Date
-        ? product.updatedAt.toISOString()
-        : product.updatedAt,
-  };
+  return serializeForClient(product);
 }
 
 function serializeScan(
@@ -161,26 +167,7 @@ function serializeScan(
     return null;
   }
 
-  return {
-    ...scan,
-
-    product:
-      scan.product
-        ? serializeProduct(
-            scan.product,
-          )
-        : null,
-
-    createdAt:
-      scan.createdAt instanceof Date
-        ? scan.createdAt.toISOString()
-        : scan.createdAt,
-
-    updatedAt:
-      scan.updatedAt instanceof Date
-        ? scan.updatedAt.toISOString()
-        : scan.updatedAt,
-  };
+  return serializeForClient(scan);
 }
 
 function calculateProductMatchScore(

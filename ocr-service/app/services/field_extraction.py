@@ -1340,48 +1340,103 @@ def extract_consumer_care(
 def extract_country_of_origin(
     text: str,
 ) -> str | None:
+    normalized = normalize_text(text)
+
     patterns = [
-        r"(?:COUNTRY\s+OF\s+ORIGIN|"
-        r"COUNTRY\s+OF\s+ORIG[I1]N|"
-        r"MADE\s+IN|"
-        r"PRODUCT\s+OF|"
-        r"ORIGIN\s*[:\-])"
-        r"\s*[:\-]?\s*"
-        r"([A-Za-z][A-Za-z\s]{1,40})",
+        r"(?:COUNTRY\s*OF\s*ORIG[I1]N|MADE\s*IN|PRODUCT\s*OF|ORIGIN\s*[:\-]?)\s*[:\-]?\s*"
+        r"([A-Za-z][A-Za-z ]{1,40})",
     ]
+
+    stop_words = (
+        r"INGREDIENTS|STORE|NUTRITION(?:AL)?|MRP|BATCH|NET|"
+        r"MANUFACTURED|MANUFACTURER|MARKETED|WEBSITE|FSSAI|LIC|"
+        r"CUSTOMER|CONSUMER|CARE|USP|USE|BY|PKD|PACKED"
+    )
 
     for pattern in patterns:
         match = re.search(
             pattern,
-            text,
+            normalized,
             re.IGNORECASE,
         )
 
         if not match:
             continue
 
-        value = clean_value(
-            match.group(1)
-        )
-
+        value = clean_value(match.group(1))
         value = re.split(
-            r"\b(?:INGREDIENTS|STORE|NUTRITION|"
-            r"MRP|BATCH|NET|MANUFACTURED|"
-            r"WEBSITE|FSSAI|LIC)\b",
+            rf"\b(?:{stop_words})\b",
             value,
             maxsplit=1,
             flags=re.IGNORECASE,
         )[0]
-
-        value = clean_value(
-            value
-        )
+        value = clean_value(value)
 
         if value:
             return value
 
-    return None
+    lines = [
+        clean_value(line)
+        for line in normalized.splitlines()
+        if clean_value(line)
+    ]
 
+    for index, line in enumerate(lines):
+        compact = re.sub(r"\s+", "", line.upper())
+
+        if compact.startswith("PRODUCTOF"):
+            value = re.sub(
+                r"^PRODUCT\s*OF\s*",
+                "",
+                line,
+                flags=re.IGNORECASE,
+            )
+            value = re.split(
+                rf"\b(?:{stop_words})\b",
+                value,
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0]
+            value = clean_value(value)
+            if value:
+                return value
+
+        if compact.startswith("MADEIN"):
+            value = re.sub(
+                r"^MADE\s*IN\s*",
+                "",
+                line,
+                flags=re.IGNORECASE,
+            )
+            value = clean_value(value)
+            if value:
+                return value
+
+        if compact.startswith("COUNTRYOFORIGIN"):
+            value = re.sub(
+                r"^COUNTRY\s*OF\s*ORIG[I1]N\s*[:\-]?\s*",
+                "",
+                line,
+                flags=re.IGNORECASE,
+            )
+            value = clean_value(value)
+            if value:
+                return value
+
+        if re.search(
+            r"\b(?:PRODUCT\s*OF|MADE\s*IN|COUNTRY\s*OF\s*ORIG[I1]N)\b",
+            line,
+            re.IGNORECASE,
+        ) and index + 1 < len(lines):
+            next_line = clean_value(lines[index + 1])
+            if next_line and not re.search(
+                rf"\b(?:{stop_words})\b",
+                next_line,
+                re.IGNORECASE,
+            ):
+                return next_line
+
+    return None
 
 def extract_batch_number(
     text: str,
@@ -2218,27 +2273,75 @@ def extract_product_name(
 ) -> str | None:
     candidates = []
 
+    known_brands = {
+        "AMUL", "PARLE", "OREO", "BRITANNIA", "NESTLE", "NESTLÉ",
+        "CADBURY", "KELLOGG'S", "KELLOGGS", "MAGGI", "BOURNVITA",
+        "HORLICKS", "COMPLAN", "DABUR", "PATANJALI", "HALDIRAM",
+        "BIKAJI", "BALAJI", "LAYS", "KURKURE", "BINGO",
+        "HIMALAYA", "NIVEA", "PONDS", "POND'S", "LAKME", "LAKMÉ",
+        "GARNIER", "LOREAL", "L'ORÉAL", "MAYBELLINE", "COLGATE",
+        "PEPSODENT", "DOVE", "PEARS", "SANTOOR", "MEDIMIX",
+        "MAMAEARTH", "WOW", "PLUM", "BIOTIQUE", "VLCC",
+        "LOTUS", "LOTUS HERBALS", "BEARDO", "WILD STONE", "FOGG",
+        "ENGAGE", "DENVER", "PARK AVENUE", "AXE", "OLD SPICE",
+        "BELLA VITA", "SKINN", "TITAN SKINN", "AJMAL", "ARMAF",
+        "DETTOL", "SAVLON", "HANSAPLAST", "VOLINI", "MOOV",
+        "ZANDU", "BAIDYANATH", "ZYDUS", "GOODFOOD",
+    }
+
     ignored_words = {
         "MRP", "NET", "QTY", "QUANTITY", "WEIGHT", "CONTENTS",
-        "MANUFACTURED", "MANUFACTURER", "MFD", "MFD.",
-        "MANOFACTURED", "PACKED", "PACKER", "PKD",
-        "IMPORTED", "IMPORTER", "BEST", "BEFORE", "USE", "BY",
-        "CUSTOMER", "CONSUMER", "CARE", "HELPLINE", "FEEDBACK",
-        "COMPLAINT", "CONTACT", "MADE", "IN", "CONTAINS", "CONTAIN",
-        "TRACES", "INGREDIENTS", "NUTRITIONAL", "INFORMATION",
-        "ENERGY", "PROTEIN", "CARBOHYDRATE", "SUGAR", "FAT",
-        "TRANS", "SATURATED", "STORE", "COOL", "DRY", "PLACE",
-        "BISCUITS", "BATCH", "LIC", "LICENSE", "FSSAI",
-        "USP", "LDPE", "GPE", "RECYCLABLE", "SINCE", "SINCE1930",
-        "PROTECTION", "HELPS", "PREVENT", "SKIN", "DARKENING",
-        "EVERYDAY", "FROM", "THE", "SUN", "NON-GREASY", "FORMULA",
-        "ALL", "TYPES", "FOR", "EXTERNAL", "USE", "ONLY",
-        "NET", "VOL", "VOLUME", "ML", "LTR", "RS",
-        "DIRECTIONS", "CAUTION", "PRODUCT", "CATEGORY",
-        "FLAMMABLE", "IGNITION", "KEEP", "AWAY", "SOURCES",
-        "WARNING", "NOT", "TO", "BE", "SOLD", "WITHOUT",
-        "OUTER", "CARTON",
+        "MANUFACTURED", "MANUFACTURER", "MFD", "MFD.", "MANOFACTURED",
+        "PACKED", "PACKER", "PKD", "IMPORTED", "IMPORTER", "BEST",
+        "BEFORE", "USE", "BY", "CUSTOMER", "CONSUMER", "CARE",
+        "HELPLINE", "FEEDBACK", "COMPLAINT", "CONTACT", "MADE", "IN",
+        "CONTAINS", "CONTAIN", "TRACES", "INGREDIENTS", "NUTRITIONAL",
+        "INFORMATION", "ENERGY", "PROTEIN", "CARBOHYDRATE", "SUGAR",
+        "FAT", "TRANS", "SATURATED", "STORE", "COOL", "DRY", "PLACE",
+        "BISCUITS", "BATCH", "LIC", "LICENSE", "FSSAI", "USP", "LDPE",
+        "GPE", "RECYCLABLE", "SINCE", "SINCE1930", "PROTECTION", "HELPS",
+        "PREVENT", "SKIN", "DARKENING", "EVERYDAY", "FROM", "THE", "SUN",
+        "NON-GREASY", "FORMULA", "ALL", "TYPES", "FOR", "EXTERNAL",
+        "ONLY", "VOL", "VOLUME", "ML", "LTR", "RS", "DIRECTIONS",
+        "CAUTION", "PRODUCT", "CATEGORY", "FLAMMABLE", "IGNITION",
+        "KEEP", "AWAY", "SOURCES", "WARNING", "NOT", "TO", "BE",
+        "SOLD", "WITHOUT", "OUTER", "CARTON", "EXECUTIVE", "TOLL",
+        "FREE", "EMAIL", "WEBSITE", "PLOT", "FOOD", "PARK", "SECTOR",
+        "HARYANA", "INDIA", "GURUGRAM", "MANESAR",
     }
+
+    forbidden_patterns = [
+        r"CUSTOMER\s+CARE",
+        r"CONSUMER\s+CARE",
+        r"CUSTOMER\s+CARE\s+EXECUTIVE",
+        r"FOR\s+CONSUMER",
+        r"FOR\s+CUSTOMER",
+        r"COMPLAINT",
+        r"FEEDBACK",
+        r"MANUFACTURED\s*(?:&|AND)?\s*MARKETED",
+        r"MANUFACTURED\s+BY",
+        r"MARKETED\s+BY",
+        r"GOODFOOD\s+FOODS",
+        r"INGREDIENTS",
+        r"NUTRITION(?:AL)?\s+INFORMATION",
+        r"LIC\.?\s*NO",
+        r"PRODUCT\s+OF",
+        r"MADE\s+IN",
+        r"STORE\s+IN",
+        r"KEEP\s+AWAY",
+        r"SCAN\s+FOR",
+    ]
+
+    product_keywords = [
+        "SUNSCREEN", "LOTION", "CREAM", "GEL", "SERUM", "SHAMPOO",
+        "CONDITIONER", "SOAP", "FACE", "WASH", "BODY", "HAIR", "OIL",
+        "BALM", "MOISTURIZER", "PROTECTIVE", "SPF", "PARFUM", "PERFUME",
+        "FRAGRANCE", "DEODORANT", "DEO", "BODY SPRAY", "COLOGNE",
+        "BISCUIT", "COOKIE", "CHOCOLATE", "CREAM", "FILLED", "MILK",
+        "DRINK", "JUICE", "SNACK", "CHIPS", "OREO", "PARLE", "DARK",
+        "FANTASY", "CHOCO", "TABLET", "CAPSULE", "SYRUP", "OINTMENT",
+        "DROPS",
+    ]
 
     for index, detection in enumerate(detections):
         text = clean_value(str(detection.get("text", "")))
@@ -2251,79 +2354,57 @@ def extract_product_name(
             confidence = 0.0
 
         upper_text = text.upper()
+        words = {w.upper() for w in re.findall(r"[A-Za-z]+", text)}
 
-        # Skip pure numeric
+        if len(text) < 3 or len(text) > 100:
+            continue
+
         if re.fullmatch(r"[\d\s.,:/\-₹]+", text):
             continue
-
-        if len(text) < 3:
-            continue
-
-        words = {w.upper() for w in re.findall(r"[A-Za-z]+", text)}
 
         if words and words.issubset(ignored_words):
             continue
 
-        # Skip label lines
+        if upper_text.strip() in known_brands:
+            continue
+
+        if any(re.search(pattern, upper_text, re.IGNORECASE) for pattern in forbidden_patterns):
+            continue
+
         if re.search(
-            r"\b(?:MRP|NET\s*(?:QTY|QUANTITY|WEIGHT)|"
-            r"MFD|PKD|PACKED|MANUFACTURED|IMPORTED|"
-            r"BEST\s+BEFORE|CONTAINS|INGREDIENTS|"
-            r"NUTRITIONAL|BATCH|LIC\.?\s*NO|FSSAI|"
-            r"USP|LDPE|GPE|RECYCLABLE|"
-            r"DIRECTIONS\s+FOR\s+USE|CAUTION)\b",
+            r"\b(?:MRP|NET\s*(?:QTY|QUANTITY|WEIGHT)|MFD|PKD|PACKED|"
+            r"MANUFACTURED|IMPORTED|BEST\s+BEFORE|CONTAINS|INGREDIENTS|"
+            r"NUTRITIONAL|BATCH|LIC\.?\s*NO|FSSAI|USP|LDPE|GPE|"
+            r"RECYCLABLE|DIRECTIONS\s+FOR\s+USE|CAUTION)\b",
             upper_text,
         ):
             continue
 
-        if re.search(
-            r"\d+\s*(?:KG|KGS|G|GM|GMS|MG|ML|L|LTR|PCS?)\b",
-            text,
-            re.IGNORECASE,
-        ):
+        if re.search(r"\d+\s*(?:KG|KGS|G|GM|GMS|MG|ML|L|LTR|PCS?)\b", text, re.IGNORECASE):
             continue
 
-        if "@" in text:
-            continue
-
-        if re.search(r"\b\d{10,14}\b", text):
-            continue
-
-        if len(text) > 120:
+        if "@" in text or re.search(r"\b\d{10,14}\b", text):
             continue
 
         score = confidence
+        word_count = len(re.findall(r"[A-Za-z]+", text))
 
         if re.search(r"[A-Za-z]", text):
             score += 0.10
-
-        word_count = len(re.findall(r"[A-Za-z]+", text))
-        if word_count >= 2:
+        if 2 <= word_count <= 6:
+            score += 0.10
+        if word_count <= 3:
+            score += 0.08
+        if index < 20:
             score += 0.08
 
-        # ── Generic product keywords (cosmetic + food + pharma + perfume) ──
-        product_keywords = [
-            # Cosmetic / Personal Care
-            "SUNSCREEN", "LOTION", "CREAM", "GEL", "SERUM",
-            "SHAMPOO", "CONDITIONER", "SOAP", "FACE", "WASH",
-            "BODY", "HAIR", "OIL", "BALM", "MOISTURIZER",
-            "PROTECTIVE", "CARE", "SKIN", "SPF",
-            # Perfume / Fragrance
-            "EAU DE PARFUM", "EAU DE TOILETTE", "PARFUM", "PERFUME",
-            "FRAGRANCE", "DEODORANT", "DEO", "BODY SPRAY",
-            "DARK SIDE", "COLOGNE",
-            # Food / Beverage
-            "BISCUIT", "COOKIE", "CHOCOLATE", "CREAM", "FILLED",
-            "MILK", "DRINK", "JUICE", "SNACK", "CHIPS",
-            "OREO", "PARLE", "DARK", "FANTASY", "CHOCO",
-            # Pharma
-            "TABLET", "CAPSULE", "SYRUP", "OINTMENT", "DROPS",
-        ]
-
-        for kw in product_keywords:
-            if kw in upper_text:
-                score += 0.25
+        for keyword in product_keywords:
+            if keyword in upper_text:
+                score += 0.35
                 break
+
+        if re.fullmatch(r"[A-Z][A-Z0-9&' .\-]{2,60}", text, re.IGNORECASE):
+            score += 0.05
 
         candidates.append({
             "text": text,
@@ -2335,67 +2416,89 @@ def extract_product_name(
     if not candidates:
         return None
 
-    # ── Multi-line product name combining ──
-    candidates.sort(key=lambda x: x["index"])
+    candidates.sort(key=lambda item: item["index"])
 
-    combined_groups = []
-    current_group = []
+    groups = []
+    current = []
 
-    for cand in candidates:
-        if not current_group:
-            current_group.append(cand)
+    for candidate in candidates:
+        if not current:
+            current = [candidate]
             continue
 
-        prev = current_group[-1]
-
-        if cand["index"] - prev["index"] <= 2:
-            current_group.append(cand)
+        previous = current[-1]
+        if candidate["index"] - previous["index"] <= 1:
+            current.append(candidate)
         else:
-            combined_groups.append(current_group)
-            current_group = [cand]
+            groups.append(current)
+            current = [candidate]
 
-    if current_group:
-        combined_groups.append(current_group)
+    if current:
+        groups.append(current)
 
     final_candidates = []
 
-    for group in combined_groups:
-        if len(group) == 1:
-            final_candidates.append(group[0])
+    for group in groups:
+        group_texts = [item["text"] for item in group]
+        combined = clean_value(" ".join(group_texts))
+
+        if len(combined) > 100:
+            combined = combined[:100].rsplit(" ", 1)[0]
+
+        if any(re.search(pattern, combined, re.IGNORECASE) for pattern in forbidden_patterns):
             continue
 
-        combined_text = " ".join(item["text"] for item in group)
-        combined_text = clean_value(combined_text)
+        combined_upper = combined.upper()
+        combined_words = {w.upper() for w in re.findall(r"[A-Za-z]+", combined)}
 
-        if len(combined_text) > 150:
-            combined_text = combined_text[:150]
+        if combined_words and combined_words.issubset(ignored_words):
+            continue
 
         avg_conf = sum(item["confidence"] for item in group) / len(group)
         avg_score = sum(item["score"] for item in group) / len(group)
 
+        keyword_bonus = 0.0
+        if any(keyword in combined_upper for keyword in product_keywords):
+            keyword_bonus = 0.30
+
+        brand_prefix_bonus = 0.0
+        first_word = combined_words
+        if first_word and any(brand not in combined_upper for brand in known_brands):
+            brand_prefix_bonus = 0.0
+
         final_candidates.append({
-            "text": combined_text,
+            "text": combined,
             "confidence": avg_conf,
-            "score": avg_score + 0.15,
+            "score": avg_score + 0.20 + keyword_bonus + brand_prefix_bonus,
             "index": group[0]["index"],
         })
 
     final_candidates.extend(candidates)
 
+    unique = []
     seen = set()
-    unique_candidates = []
 
-    for cand in final_candidates:
-        key = cand["text"].lower().strip()
+    for candidate in final_candidates:
+        value = clean_value(candidate["text"])
+        if not value:
+            continue
+
+        if value.upper() in known_brands:
+            continue
+
+        if any(re.search(pattern, value, re.IGNORECASE) for pattern in forbidden_patterns):
+            continue
+
+        key = value.lower()
         if key in seen:
             continue
         seen.add(key)
-        unique_candidates.append(cand)
+        unique.append(candidate)
 
-    if not unique_candidates:
+    if not unique:
         return None
 
-    unique_candidates.sort(
+    unique.sort(
         key=lambda item: (
             item["score"],
             item["confidence"],
@@ -2404,8 +2507,7 @@ def extract_product_name(
         reverse=True,
     )
 
-    return unique_candidates[0]["text"]
-
+    return unique[0]["text"]
 
 def extract_fields(
     detections: list[dict],

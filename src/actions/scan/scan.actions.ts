@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/utils/prisma.client";
+import { Prisma } from "@prisma/client";
 import { syncUserWithDatabase } from "@/actions/user/user.actions";
 
 type ScanImageInput = {
@@ -12,6 +13,37 @@ type ScanImageInput = {
   format?: string;
   bytes?: number;
 };
+
+
+function serializeForClient<T>(value: T): T {
+  if (value instanceof Prisma.Decimal) {
+    return value.toString() as unknown as T;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString() as unknown as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      serializeForClient(item),
+    ) as unknown as T;
+  }
+
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      result[key] = serializeForClient(val);
+    }
+
+    return result as T;
+  }
+
+  return value;
+}
 
 export async function createScanWithImages(images: ScanImageInput[]) {
   try {
@@ -75,7 +107,7 @@ export async function createScanWithImages(images: ScanImageInput[]) {
 
     return {
       success: true,
-      scan,
+      scan: serializeForClient(scan),
     };
   } catch (error) {
     console.error("CREATE SCAN ERROR:", error);
@@ -137,7 +169,7 @@ export async function getScanResult(scanId: string) {
 
     return {
       success: true,
-      scan,
+      scan: serializeForClient(scan),
     };
   } catch (error) {
     console.error(

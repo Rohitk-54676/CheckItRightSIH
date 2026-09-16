@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import ReportItem from "./ReportItem";
 import type { DashboardReport } from "@/lib/consumer/get-user-dashboard";
+import Link from "next/link";
 
 const container = {
   hidden: {},
@@ -31,12 +32,12 @@ export default function RecentReports({
     >
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-bold text-[#102A43]">My Reports</h2>
-        <a
-          href="/user/reports"
+        <Link
+          href="/consumer/reports"
           className="text-xs font-semibold text-[#1769AA] hover:underline"
         >
           View all →
-        </a>
+        </Link>
       </div>
 
       {reports.length === 0 ? (
